@@ -34,9 +34,9 @@ dependencies {
 Yo**u can use own server url or blogspot url!**
 
     {
-      "title": "IMPORTANT!",
-      "message": "26/06/2019 [1.8]\n- Fix App Crash\n- Fixed a Zip Path Traversal Vulnerability",
-      "download": "https://github.com/KhunHtetzNaing/zFont/releases/download/apk/zFont.apk",
+      "title": "This is Title!",
+      "message": "This is Message",
+      "download": "Direct APK Download Link!!!",
       "playstore": "com.mgngoe.zfont",
       "uninstall": false,
       "what": {
