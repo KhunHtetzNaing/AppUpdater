@@ -13,7 +13,7 @@ allprojects {
 **Step 2.** Add the dependency
 ```css
 dependencies {
-	        implementation 'com.github.KhunHtetzNaing:AppUpdater:Tag'
+	        implementation 'com.github.KhunHtetzNaing:AppUpdater:1.0'
 	}
 ```
 [![](https://jitpack.io/v/KhunHtetzNaing/AppUpdater.svg)](https://jitpack.io/#KhunHtetzNaing/AppUpdater)
