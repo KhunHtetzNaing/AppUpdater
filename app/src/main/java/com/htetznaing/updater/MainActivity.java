@@ -11,7 +11,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        AppUpdater appUpdater = new AppUpdater(this, "https://myappupdateserver.blogspot.com/2019/06/zfont.html");
+
+        String check_update_json = "https://myappupdateserver.blogspot.com/2019/06/zfont.html";
+        AppUpdater appUpdater = new AppUpdater(this, check_update_json);
         appUpdater.check();
     }
 }
