@@ -3,6 +3,7 @@ package com.htetznaing.app_updater;
 import android.Manifest;
 import android.app.Activity;
 import android.app.DownloadManager;
+import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -49,25 +50,30 @@ public class AppUpdater {
     private String downloadPath;
     private DownloadManager mDownloadManager;
     private long mDownloadedFileID;
-    private DownloadManager.Request mRequest;
     private String download = null;
     private String versionName = null;
-    private int versionCode=0;
     private boolean uninstall = false,force=true;
     private String json_url;
     private TedPermission.Builder permission;
     private MaterialStyledDialog.Builder builder;
+    private String url,fileName;
+    private boolean showMessage;
+    private ProgressDialog progressDialog;
     @RequiresPermission(Manifest.permission.INTERNET)
     public AppUpdater(Activity activity,String json_url) {
         this.json_url = json_url;
         this.activity = activity;
+
+        progressDialog = new ProgressDialog(activity);
+        progressDialog.setMessage("Checking...");
+
         builder = new MaterialStyledDialog.Builder(activity);
         mDownloadManager = (DownloadManager) activity.getSystemService(DOWNLOAD_SERVICE);
         downloadPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getPath()+"/";
         PermissionListener permissionlistener = new PermissionListener() {
             @Override
             public void onPermissionGranted() {
-                checkUpdate();
+                dlFile(url,fileName);
             }
 
             @Override
@@ -80,11 +86,9 @@ public class AppUpdater {
                 .setPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE);
     }
 
-    @RequiresPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-    public void check(){
-        if (checkPermissions()) {
-            checkUpdate();
-        }
+    public void check(boolean showMessage){
+        this.showMessage=showMessage;
+        checkUpdate();
     }
 
     private boolean checkPermissions() {
@@ -103,6 +107,14 @@ public class AppUpdater {
 
     private void checkUpdate() {
         new AsyncTask<Void,Void,String>(){
+
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+                if (showMessage){
+                    progressDialog.show();
+                }
+            }
 
             @Override
             protected String doInBackground(Void... voids) {
@@ -129,6 +141,9 @@ public class AppUpdater {
             @Override
             protected void onPostExecute(String s) {
                 super.onPostExecute(s);
+                if (showMessage){
+                    progressDialog.dismiss();
+                }
                 if (s!=null){
                     letCheck(s);
                 }
@@ -180,7 +195,7 @@ public class AppUpdater {
             final String message = data.getMessage();
             final String playStore = data.getPlaystore();
             uninstall = data.isUninstall();
-            versionCode = data.getVersionCode();
+            int versionCode = data.getVersionCode();
             versionName = data.getVersionName();
             download = data.getDownload();
             force = data.isForce();
@@ -195,8 +210,16 @@ public class AppUpdater {
                 e.printStackTrace();
             }
 
-            if (versionCode==currentVersion || versionCode<currentVersion){
-
+            if (versionCode ==currentVersion || versionCode <currentVersion){
+                if (showMessage) {
+                    builder.setTitle("Congratulations!")
+                            .setDescription("You are on latest version!")
+                            .setStyle(Style.HEADER_WITH_ICON)
+                            .setIcon(R.drawable.ic_emotion)
+                            .withDialogAnimation(true)
+                            .setPositiveText("OK");
+                    builder.show();
+                }
             }else{
                 if (data.isAll()){
                     letUpdate(title,message,playStore);
@@ -230,7 +253,6 @@ public class AppUpdater {
         activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-
                 builder.setTitle(title)
                         .setDescription(message)
                         .setStyle(Style.HEADER_WITH_ICON)
@@ -241,9 +263,7 @@ public class AppUpdater {
                         .onPositive(new MaterialDialog.SingleButtonCallback() {
                             @Override
                             public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
-                                if (checkPermissions()) {
-                                    dlFile(download, activity.getString(R.string.app_name) + versionName + ".apk");
-                                }
+                                dlFile(download, title + versionName + ".apk");
                             }
                         })
                         .setNegativeText("Close")
@@ -277,27 +297,31 @@ public class AppUpdater {
     }
 
     private void dlFile(String url, String fileName){
-        try {
-            String mBaseFolderPath = downloadPath;
-            if (!new File(mBaseFolderPath).exists()) {
-                new File(mBaseFolderPath).mkdir();
+        this.url=url;
+        this.fileName=fileName;
+        if (checkPermissions()) {
+            try {
+                String mBaseFolderPath = downloadPath;
+                if (!new File(mBaseFolderPath).exists()) {
+                    new File(mBaseFolderPath).mkdir();
+                }
+                File myFile = new File(mBaseFolderPath + fileName);
+                if (!myFile.exists()) {
+                    String mFilePath = "file://" + mBaseFolderPath + fileName;
+                    Uri downloadUri = Uri.parse(url);
+                    DownloadManager.Request mRequest = new DownloadManager.Request(downloadUri);
+                    mRequest.setDestinationUri(Uri.parse(mFilePath));
+                    mRequest.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                    mDownloadedFileID = mDownloadManager.enqueue(mRequest);
+                    IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+                    activity.registerReceiver(downloadReceiver, filter);
+                    Toast.makeText(activity, "Starting Download : " + fileName, Toast.LENGTH_SHORT).show();
+                } else {
+                    openFile(myFile.toString());
+                }
+            } catch (Exception e) {
+                activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
             }
-            File myFile = new File(mBaseFolderPath+fileName);
-            if (!myFile.exists()) {
-                String mFilePath = "file://" + mBaseFolderPath + fileName;
-                Uri downloadUri = Uri.parse(url);
-                mRequest = new DownloadManager.Request(downloadUri);
-                mRequest.setDestinationUri(Uri.parse(mFilePath));
-                mRequest.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                mDownloadedFileID = mDownloadManager.enqueue(mRequest);
-                IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
-                activity.registerReceiver(downloadReceiver, filter);
-                Toast.makeText(activity, "Starting Download : " + fileName, Toast.LENGTH_SHORT).show();
-            }else{
-                openFile(myFile.toString());
-            }
-        } catch (Exception e) {
-            activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         }
     }
 
@@ -345,6 +369,7 @@ public class AppUpdater {
         String path = null;
         String[] proj = { MediaStore.MediaColumns.DATA };
         Cursor cursor = activity.getContentResolver().query(contentUri, proj, null, null, null);
+        assert cursor != null;
         if (cursor.moveToFirst()) {
             int column_index = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA);
             path = cursor.getString(column_index);
