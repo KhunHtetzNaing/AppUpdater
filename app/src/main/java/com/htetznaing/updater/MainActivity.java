@@ -14,6 +14,6 @@ public class MainActivity extends AppCompatActivity {
 
         String check_update_json = "https://myappupdateserver.blogspot.com/2019/06/zfont.html";
         AppUpdater appUpdater = new AppUpdater(this, check_update_json);
-        appUpdater.check();
+        appUpdater.check(false);
     }
 }
