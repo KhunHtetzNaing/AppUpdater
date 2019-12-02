@@ -1,6 +1,7 @@
 package com.htetznaing.app_updater;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.DownloadManager;
 import android.app.ProgressDialog;
@@ -105,6 +106,7 @@ public class AppUpdater {
         return true;
     }
 
+    @SuppressLint("StaticFieldLeak")
     private void checkUpdate() {
         new AsyncTask<Void,Void,String>(){
 
@@ -259,24 +261,28 @@ public class AppUpdater {
                         .setCancelable(!force)
                         .setIcon(R.drawable.ic_update)
                         .withDialogAnimation(true)
-                        .setPositiveText("Download")
-                        .onPositive(new MaterialDialog.SingleButtonCallback() {
-                            @Override
-                            public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
-                                dlFile(download, title + versionName + ".apk");
-                            }
-                        })
                         .setNegativeText("Close")
                         .onNegative(new MaterialDialog.SingleButtonCallback() {
                             @Override
                             public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
-                                activity.finish();
+                                if (!force){
+                                    dialog.dismiss();
+                                }else{
+                                    activity.finish();
+                                }
+
                             }
                         });
-
-                if (playStore!=null && !playStore.isEmpty()){
-                    builder.setNeutralText("Play Store");
-                    builder.onNeutral(new MaterialDialog.SingleButtonCallback() {
+                if (playStore!=null && !playStore.isEmpty() && download!=null && !download.isEmpty() ){
+                    builder.setNeutralText("Direct Update")
+                            .onNeutral(new MaterialDialog.SingleButtonCallback() {
+                                @Override
+                                public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+                                    dlFile(download, title + versionName + ".apk");
+                                }
+                            });
+                    builder.setPositiveText("Play Store");
+                    builder.onPositive(new MaterialDialog.SingleButtonCallback() {
                         @Override
                         public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
                             final String appPackageName = playStore;
@@ -290,6 +296,30 @@ public class AppUpdater {
                             }
                         }
                     });
+                }else if (playStore != null && !playStore.isEmpty()){
+                    builder.setPositiveText("Play Store");
+                    builder.onPositive(new MaterialDialog.SingleButtonCallback() {
+                        @Override
+                        public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+                            final String appPackageName = playStore;
+                            if (uninstall){
+                                uninstall();
+                            }
+                            try {
+                                activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + appPackageName)));
+                            } catch (android.content.ActivityNotFoundException anfe) {
+                                activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + appPackageName)));
+                            }
+                        }
+                    });
+                }else if (download!=null && !download.isEmpty()){
+                    builder.setPositiveText("Update")
+                            .onPositive(new MaterialDialog.SingleButtonCallback() {
+                                @Override
+                                public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+                                    dlFile(download, title + versionName + ".apk");
+                                }
+                            });
                 }
                 builder.show();
             }
